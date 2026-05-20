@@ -28,6 +28,16 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
     _playlistsFuture = vm.getPlaylistsWithMusicCount();
   }
 
+  Future<void> _refreshPlaylists(PlaylistViewModel viewModel) async {
+    await viewModel.loadPlaylistsWithMusicCount(force: true);
+    if (!mounted) return;
+    setState(() {
+      _playlistsFuture = Future<List<Map<String, dynamic>>>.value(
+        viewModel.playlistsWithMusicCount,
+      );
+    });
+  }
+
   void _showCreatePlaylistDialog(
     BuildContext context,
     PlaylistViewModel viewModel,
@@ -59,13 +69,12 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
             child: const Text('Cancelar'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               final name = controller.text.trim();
               if (name.isNotEmpty) {
-                viewModel.createPlaylist(name);
-                setState(() {
-                  _playlistsFuture = viewModel.getPlaylistsWithMusicCount();
-                });
+                await viewModel.createPlaylist(name);
+                await _refreshPlaylists(viewModel);
+                if (!context.mounted) return;
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context)
                   ..hideCurrentSnackBar()
@@ -109,11 +118,10 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
             child: const Text('Não'),
           ),
           TextButton(
-            onPressed: () {
-              viewModel.deletePlaylist(playlistId);
-              setState(() {
-                _playlistsFuture = viewModel.getPlaylistsWithMusicCount();
-              });
+            onPressed: () async {
+              await viewModel.deletePlaylist(playlistId);
+              await _refreshPlaylists(viewModel);
+              if (!context.mounted) return;
               Navigator.pop(context);
               ScaffoldMessenger.of(context)
                 ..hideCurrentSnackBar()
@@ -285,59 +293,49 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
                                 ),
                               );
                             },
-                            child: Hero(
-                              tag: 'playlist_$id',
-                              flightShuttleBuilder:
-                                  (context, animation, direction, from, to) {
-                                return Material(
-                                  color: Colors.transparent,
-                                  child: to.widget,
-                                );
-                              },
-                              child: Material(
-                                color: Colors.transparent,
-                                child: _PressableTile(
-                                  onTap: () {
-                                    HapticFeedback.selectionClick();
-                                    Navigator.pushNamed(
-                                      context,
-                                      AppRoutes.playlistDetail,
-                                      arguments: PlaylistDetailArgs(
-                                        playlistId: id,
-                                        playlistName: name,
-                                      ),
-                                    );
-                                  },
-                                  child: Container(
-                                    margin: const EdgeInsets.only(bottom: 16),
-                                    decoration: BoxDecoration(
-                                      color: theme.cardColor,
-                                      borderRadius: BorderRadius.circular(16),
-                                      boxShadow: shadows,
+                            child: Material(
+                              color: Colors.transparent,
+                              child: _PressableTile(
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.playlistDetail,
+                                    arguments: PlaylistDetailArgs(
+                                      playlistId: id,
+                                      playlistName: name,
                                     ),
-                                    child: ListTile(
-                                      leading: const Icon(Icons.queue_music),
-                                      title: Text(
-                                        name,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                  );
+                                },
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  decoration: BoxDecoration(
+                                    color: theme.cardColor,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: shadows,
+                                  ),
+                                  child: ListTile(
+                                    leading: const Icon(Icons.queue_music),
+                                    title: Text(
+                                      name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                      subtitle: Text(
-                                        '$count ${count == 1 ? 'musica' : 'musicas'}',
-                                      ),
-                                      trailing: IconButton(
-                                        icon: const Icon(Icons.delete),
-                                        onPressed: () {
-                                          HapticFeedback.selectionClick();
-                                          _showDeleteConfirmationDialog(
-                                            context,
-                                            viewModel,
-                                            id,
-                                            name,
-                                          );
-                                        },
-                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      '$count ${count == 1 ? 'musica' : 'musicas'}',
+                                    ),
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.delete),
+                                      onPressed: () {
+                                        HapticFeedback.selectionClick();
+                                        _showDeleteConfirmationDialog(
+                                          context,
+                                          viewModel,
+                                          id,
+                                          name,
+                                        );
+                                      },
                                     ),
                                   ),
                                 ),

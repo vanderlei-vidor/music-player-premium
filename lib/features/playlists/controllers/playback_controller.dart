@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:palette_generator/palette_generator.dart';
@@ -20,6 +19,7 @@ import 'package:music_music/features/playlists/controllers/sleep_timer_controlle
 import 'package:music_music/features/playlists/models/playback_issue.dart';
 import 'package:music_music/features/playlists/models/sleep_timer_mode.dart';
 import 'package:music_music/features/playlists/utils/playlist_genre_utils.dart';
+import 'package:music_music/shared/utils/artwork_provider.dart';
 
 class PlaybackController extends ChangeNotifier {
   PlaybackController({
@@ -585,6 +585,12 @@ class PlaybackController extends ChangeNotifier {
     if (queue.isEmpty) return;
 
     final isDifferentQueue = _queueController.replaceIfDifferent(queue);
+    AppLogger.info(
+      'PlaybackController',
+      'playMusic start | queue=${queue.length} | index=$index | '
+      'differentQueue=$isDifferentQueue | shuffled=$_isShuffled | '
+      'current=${_currentMusic?.title ?? '-'}',
+    );
 
     try {
       if (isDifferentQueue) {
@@ -600,10 +606,16 @@ class PlaybackController extends ChangeNotifier {
 
       _currentMusic = _queueMusics[index];
       unawaited(_updatePlayerWidget(_currentMusic!));
-      if (kDebugMode) {
-        AppLogger.info('PlaybackController', 'play called');
-      }
+      AppLogger.info(
+        'PlaybackController',
+        'playMusic ready | current=${_currentMusic?.title ?? '-'} | '
+        'queueSize=${_queueMusics.length}',
+      );
       await _handler.play();
+      AppLogger.info(
+        'PlaybackController',
+        'playMusic dispatched play | current=${_currentMusic?.title ?? '-'}',
+      );
 
       _persistPlaybackQueue();
       notifyListeners();
@@ -635,6 +647,11 @@ class PlaybackController extends ChangeNotifier {
   }
 
   Future<void> toggleShuffle() async {
+    AppLogger.info(
+      'PlaybackController',
+      'toggleShuffle start | current=$_isShuffled | queue=${_queueMusics.length} | '
+      'currentIndex=${_queueController.currentIndex} | current=${_currentMusic?.title ?? '-'}',
+    );
     _isShuffled = !_isShuffled;
 
     await _handler.setShuffleMode(
@@ -656,6 +673,11 @@ class PlaybackController extends ChangeNotifier {
         ),
       );
     }
+    AppLogger.info(
+      'PlaybackController',
+      'toggleShuffle complete | current=$_isShuffled | queue=${_queueMusics.length} | '
+      'current=${_currentMusic?.title ?? '-'}',
+    );
     notifyListeners();
   }
 
@@ -690,8 +712,19 @@ class PlaybackController extends ChangeNotifier {
     final list = _isShuffled
         ? (List<MusicEntity>.from(musics)..shuffle())
         : musics;
+    AppLogger.info(
+      'PlaybackController',
+      'playAllFromPlaylist start | incoming=${musics.length} | '
+      'effective=${list.length} | shuffled=$_isShuffled | '
+      'first=${list.isNotEmpty ? list.first.title : '-'}',
+    );
 
     await playMusic(list, 0);
+    AppLogger.info(
+      'PlaybackController',
+      'playAllFromPlaylist complete | current=${_currentMusic?.title ?? '-'} | '
+      'queue=${_queueMusics.length}',
+    );
     _persistPlaybackQueue();
   }
 
@@ -790,8 +823,15 @@ class PlaybackController extends ChangeNotifier {
     }
 
     try {
+      final artworkProvider = resolveArtworkImageProvider(artwork);
+      if (artworkProvider == null) {
+        _currentDominantColor = fallbackColor;
+        notifyListeners();
+        return;
+      }
+
       final palette = await PaletteGenerator.fromImageProvider(
-        NetworkImage(artwork),
+        artworkProvider,
         maximumColorCount: 10,
       );
 

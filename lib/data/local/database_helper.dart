@@ -280,10 +280,39 @@ class DatabaseHelper {
   // =======================
   Future<void> addMusicToPlaylistV2(int playlistId, int musicId) async {
     final db = await database;
-    await db.insert('playlist_musics_v2', {
-      'playlistId': playlistId,
-      'musicId': musicId,
-    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+    await db.transaction((txn) async {
+      final playlistExists = await txn.query(
+        'playlists',
+        columns: ['id'],
+        where: 'id = ?',
+        whereArgs: [playlistId],
+        limit: 1,
+      );
+      if (playlistExists.isEmpty) {
+        throw StateError('Playlist nao encontrada: $playlistId');
+      }
+
+      final musicExists = await txn.query(
+        'musics_v2',
+        columns: ['id', 'isDeleted'],
+        where: 'id = ?',
+        whereArgs: [musicId],
+        limit: 1,
+      );
+      if (musicExists.isEmpty) {
+        throw StateError('Musica nao encontrada: $musicId');
+      }
+
+      final isDeleted = (musicExists.first['isDeleted'] as int?) ?? 0;
+      if (isDeleted == 1) {
+        throw StateError('Musica removida da biblioteca: $musicId');
+      }
+
+      await txn.insert('playlist_musics_v2', {
+        'playlistId': playlistId,
+        'musicId': musicId,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+    });
   }
 
   Future<void> removeMusicFromPlaylistV2(int playlistId, int musicId) async {

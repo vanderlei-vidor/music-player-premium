@@ -1,14 +1,16 @@
-# Release Checklist 1.3.0 (Android/Web)
+# Release Checklist 1.6.0 (Android/Web)
 
 ## 1. Pre-release (obrigatorio)
 
-- [x] Confirmar versao no `pubspec.yaml` (`version: 1.3.0+N`).
-- [x] Revisar changelog em `CHANGELOG.md` (`[1.3.0]`).
+- [x] Confirmar versao no `pubspec.yaml` (`version: 1.6.0+N`).
+- [x] Revisar changelog em `CHANGELOG.md` (`[1.6.0]`).
 - [ ] Rodar qualidade local:
   - [ ] `flutter clean`
   - [ ] `flutter pub get`
   - [x] `flutter analyze`
   - [x] `flutter test`
+  - [ ] `flutter test test/artwork_provider_test.dart`
+  - [ ] `flutter test test/rotating_album_cover_test.dart`
 - [ ] Validar padronizacao de estado de telas:
   - [ ] `loading` consistente em Home/Library/Playlists/Favorites/Player
   - [ ] `empty` com texto claro e CTA quando aplicavel
@@ -18,7 +20,12 @@
   - [ ] Biblioteca completa, busca e filtros
   - [ ] Playlists (criar, listar, selecionar musicas)
   - [ ] Favoritas, recentes e mais tocadas
+  - [ ] Widgets Android 2x2/4x2/4x4 e fila expandida
+  - [ ] Configuracoes de reproducao (Gapless/Crossfade)
   - [ ] Player principal + mini player
+  - [ ] Capas locais/fallback sem erro no terminal
+  - [ ] Voltar de Album/Player sem excecao apos `dispose`
+  - [ ] Widget Android atualizado e respondendo a play/pause, proxima e favorita
 
 ## 2. Android (producao)
 
@@ -26,6 +33,7 @@
 - [ ] `flutter build appbundle --release`
 - [ ] Instalar AAB em trilha interna e validar fluxo completo.
 - [ ] Verificar permissao de midia e leitura da biblioteca em Android 13+.
+- [ ] Validar `content://` e caminhos locais sem regressao visual de artwork.
 - [ ] Validar startup a frio e reabertura sem travamentos.
 
 ### Publicacao
@@ -55,5 +63,7 @@
 
 - [x] `flutter analyze` sem issues.
 - [x] `flutter test` sem falhas.
+- [ ] Sem excecoes de `NetworkImage`/`AnimationController` no terminal durante smoke test.
+- [ ] Sem conflito de AAR/AGP do `home_widget` no `flutter run` Android.
 - [ ] Nenhum bug bloqueante aberto para fluxo de reproducao e biblioteca.
-- [ ] Aprovacao final para publicar `v1.3.0`.
+- [ ] Aprovacao final para publicar `v1.6.0`.

@@ -5,11 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:music_music/app/routes.dart';
+import 'package:music_music/core/observability/app_logger.dart';
 import 'package:music_music/core/theme/app_shadows.dart';
 import 'package:music_music/data/models/music_entity.dart';
 import 'package:music_music/features/playlists/view_model/playlist_view_model.dart';
 import 'package:music_music/shared/widgets/artwork_image.dart';
-import 'package:music_music/shared/widgets/playlist_sticky_controls.dart';
 import 'package:music_music/shared/widgets/swipe_to_reveal_actions.dart';
 
 class PlaylistDetailScreen extends StatefulWidget {
@@ -62,9 +62,19 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         .read<PlaylistViewModel>()
         .getMusicsFromPlaylistV2(widget.playlistId)
         .then((musics) {
+      if (!mounted) return;
       _allMusics = musics;
       _filteredMusics = musics;
       _syncDisplayedMusics();
+    }).catchError((error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Erro ao atualizar playlist: $error'),
+          ),
+        );
     });
   }
 
@@ -94,20 +104,23 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         playlistName: widget.playlistName,
       ),
     );
-    _reloadMusics();
-
     if (!mounted) return;
-    final addedCount = result is int ? result : 0;
+    if (result is MusicSelectionResult) {
+      _allMusics = result.playlistMusics;
+      _filterMusics();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _reloadMusics();
+    });
+
+    final addedCount = switch (result) {
+      MusicSelectionResult result => result.addedCount,
+      int value => value,
+      _ => 0,
+    };
     if (addedCount > 0) {
-      final label = addedCount == 1 ? 'musica adicionada' : 'musicas adicionadas';
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            duration: const Duration(milliseconds: 1400),
-            content: Text('$addedCount $label na playlist'),
-          ),
-        );
+      debugPrint('Playlist atualizada com $addedCount item(ns) adicionados');
     }
   }
 
@@ -171,7 +184,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final viewModel = context.watch<PlaylistViewModel>();
+    final viewModel = context.read<PlaylistViewModel>();
 
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
@@ -184,105 +197,137 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
           await _openMusicSelection();
         },
       ),
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 220,
-            pinned: true,
-            backgroundColor: theme.scaffoldBackgroundColor,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              collapseMode: CollapseMode.parallax,
-              titlePadding: const EdgeInsets.only(left: 56, bottom: 16),
-              title: Hero(
-                tag: 'playlist_${widget.playlistId}',
-                child: Material(
-                  color: Colors.transparent,
-                  child: Text(
-                    widget.playlistName,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+      body: Column(
+        children: [
+          SizedBox(
+            height: 220,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _buildHeaderBackground(theme),
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 16, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            IconButton(
+                              onPressed: () => Navigator.pop(context),
+                              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                            ),
+                            Expanded(
+                              child: Text(
+                                widget.playlistName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Buscar na playlist',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            filled: true,
+                            fillColor: theme.colorScheme.surface.withValues(alpha: 0.92),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              ),
-              background: _buildHeaderBackground(theme),
+              ],
             ),
           ),
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: PlaylistStickyControls(),
+          Material(
+            color: theme.scaffoldBackgroundColor,
+            child: SizedBox(
+              height: 86,
+              child: Center(
+                child: _PlaylistActionBar(
+                  musics: _allMusics,
+                ),
+              ),
+            ),
           ),
-          ValueListenableBuilder<List<MusicEntity>>(
-            valueListenable: _displayedMusics,
-            builder: (_, musics, __) {
-              return _buildMusicSliverList(theme, viewModel, musics);
-            },
+          Expanded(
+            child: ValueListenableBuilder<List<MusicEntity>>(
+              valueListenable: _displayedMusics,
+              builder: (_, musics, __) {
+                return _buildMusicContent(theme, viewModel, musics);
+              },
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMusicSliverList(
+  Widget _buildMusicContent(
     ThemeData theme,
     PlaylistViewModel viewModel,
     List<MusicEntity> musics,
   ) {
     if (musics.isEmpty) {
-      return SliverFillRemaining(
-        hasScrollBody: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.queue_music,
-                size: 72,
-                color: theme.colorScheme.primary.withValues(alpha: 0.5),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.queue_music,
+              size: 72,
+              color: theme.colorScheme.primary.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Esta playlist ainda esta vazia',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Adicione musicas para comecar a curtir',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Esta playlist ainda esta vazia',
-                style: theme.textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Adicione musicas para comecar a curtir',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.add),
+              label: const Text('Adicionar musicas'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.add),
-                label: const Text('Adicionar musicas'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                onPressed: () async {
-                  HapticFeedback.selectionClick();
-                  await _openMusicSelection();
-                },
-              ),
-            ],
-          ),
+              onPressed: () async {
+                HapticFeedback.selectionClick();
+                await _openMusicSelection();
+              },
+            ),
+          ],
         ),
       );
     }
 
-    return SliverPadding(
-      padding: const EdgeInsets.only(bottom: 96),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate((context, index) {
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 96, top: 8),
+      itemCount: musics.length,
+      itemBuilder: (context, index) {
           final music = musics[index];
           final shadows = Theme.of(context).extension<AppShadows>()?.surface ?? [];
           ArtworkCache.preload(context, music.artworkUrl);
@@ -327,11 +372,13 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                   child: _PressableTile(
                     onTap: () {
                       HapticFeedback.selectionClick();
+                      final queueIndex = _allMusics.indexWhere((m) => m.id == music.id);
+                      if (queueIndex == -1) return;
                       if (viewModel.isShuffled) {
                         final shuffled = List<MusicEntity>.from(_allMusics)..shuffle();
                         viewModel.playMusic(shuffled, 0);
                       } else {
-                        viewModel.playMusic(_allMusics, index);
+                        viewModel.playMusic(_allMusics, queueIndex);
                       }
                     },
                     onDoubleTap: () {
@@ -371,8 +418,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
               ),
             ),
           );
-        }, childCount: musics.length),
-      ),
+      },
     );
   }
 
@@ -400,6 +446,170 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         ),
       ],
     );
+  }
+}
+
+class _PlaylistActionBar extends StatelessWidget {
+  final List<MusicEntity> musics;
+
+  const _PlaylistActionBar({required this.musics});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isPlaying = context.select<PlaylistViewModel, bool>((vm) => vm.isPlaying);
+    final isShuffled =
+        context.select<PlaylistViewModel, bool>((vm) => vm.isShuffled);
+    final currentQueue =
+        context.select<PlaylistViewModel, List<MusicEntity>>((vm) => vm.queueMusics);
+    final vm = context.read<PlaylistViewModel>();
+
+    final isCurrentQueueFromPlaylist =
+        musics.isNotEmpty && _isSamePlaylistQueue(currentQueue, musics);
+
+    Future<void> playOrPausePlaylist() async {
+      if (musics.isEmpty) return;
+      AppLogger.info(
+        'PlaylistDetailScreen',
+        'play/pause tapped | musics=${musics.length} | isPlaying=$isPlaying | '
+        'isShuffled=$isShuffled | sameQueue=$isCurrentQueueFromPlaylist | '
+        'currentQueue=${currentQueue.length}',
+      );
+      if (isCurrentQueueFromPlaylist) {
+        if (isPlaying) {
+          await vm.pause();
+        } else {
+          await vm.play();
+        }
+        AppLogger.info(
+          'PlaylistDetailScreen',
+          'play/pause handled as transport control | nowPlaying=${vm.currentMusic?.title ?? '-'}',
+        );
+        return;
+      }
+      await vm.playAllFromPlaylist(musics);
+      AppLogger.info(
+        'PlaylistDetailScreen',
+        'play/pause delegated to playAllFromPlaylist | nowPlaying=${vm.currentMusic?.title ?? '-'}',
+      );
+    }
+
+    Future<void> toggleShuffleForPlaylist() async {
+      if (musics.isEmpty) return;
+      AppLogger.info(
+        'PlaylistDetailScreen',
+        'shuffle tapped | musics=${musics.length} | isPlaying=$isPlaying | '
+        'isShuffled=$isShuffled | sameQueue=$isCurrentQueueFromPlaylist | '
+        'currentQueue=${currentQueue.length}',
+      );
+      if (!isShuffled) {
+        await vm.toggleShuffle();
+        AppLogger.info(
+          'PlaylistDetailScreen',
+          'shuffle enabled from playlist action bar',
+        );
+      }
+      if (isCurrentQueueFromPlaylist && isPlaying) return;
+      await vm.playAllFromPlaylist(musics);
+      AppLogger.info(
+        'PlaylistDetailScreen',
+        'shuffle delegated to playAllFromPlaylist | nowPlaying=${vm.currentMusic?.title ?? '-'}',
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withValues(alpha: 0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: Icon(
+                isPlaying && isCurrentQueueFromPlaylist
+                    ? Icons.pause
+                    : Icons.play_arrow,
+                key: ValueKey<bool>(isPlaying && isCurrentQueueFromPlaylist),
+                color: theme.colorScheme.onPrimary,
+                size: 28,
+              ),
+            ),
+            onPressed: playOrPausePlaylist,
+          ),
+          Container(
+            width: 1,
+            height: 24,
+            color: theme.colorScheme.onPrimary.withValues(alpha: 0.3),
+          ),
+          IconButton(
+            onPressed: toggleShuffleForPlaylist,
+            icon: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: isShuffled
+                    ? [
+                        BoxShadow(
+                          color: theme.colorScheme.onPrimary.withValues(alpha: 0.6),
+                          blurRadius: 14,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : [],
+              ),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                transitionBuilder: (child, animation) {
+                  return ScaleTransition(
+                    scale: Tween(begin: 0.85, end: 1.0).animate(animation),
+                    child: RotationTransition(
+                      turns: Tween(begin: 0.9, end: 1.0).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child: Icon(
+                  Icons.shuffle,
+                  key: ValueKey(isShuffled),
+                  size: 24,
+                  color: isShuffled
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.onPrimary.withValues(alpha: 0.7),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _isSamePlaylistQueue(
+    List<MusicEntity> currentQueue,
+    List<MusicEntity> playlistMusics,
+  ) {
+    if (currentQueue.length != playlistMusics.length) return false;
+
+    for (var i = 0; i < currentQueue.length; i++) {
+      if (currentQueue[i].audioUrl != playlistMusics[i].audioUrl) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }
 

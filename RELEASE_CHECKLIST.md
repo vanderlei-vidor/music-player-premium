@@ -16,9 +16,11 @@
 - [ ] Smoke test manual:
   - [ ] Splash -> Welcome/Home
   - [ ] Scan/import de musicas
+  - [ ] Capa/thumbnail de arquivo local sem erro no terminal (`file://`, caminho Windows/Android)
   - [ ] Player (play/pause, seek, shuffle, repeat, sleep timer)
   - [ ] Playlists (criar, adicionar, remover, tocar)
   - [ ] Favoritas, Recentes e Mais tocadas
+  - [ ] Navegacao Album/Player/Home sem erro apos `dispose` ou listener tardio
 
 ## 2. Android (producao)
 
@@ -36,6 +38,7 @@
 ### Validacao de artefato
 - [ ] Instalar build release em dispositivo real.
 - [ ] Validar controles de midia/notificacao em background.
+- [ ] Validar artwork local e fallback de capa em Android real.
 - [ ] Verificar tamanho do bundle e regressao de startup.
 
 ### Publicacao Play Console
@@ -57,11 +60,13 @@
 ### Validacao pos-deploy
 - [ ] Testar em Chrome/Edge (desktop) e Android/iOS navegador.
 - [ ] Validar upload/import web, navegacao e player.
+- [ ] Validar fallback de artwork quando provider local nao estiver disponivel na Web.
 - [ ] Verificar Lighthouse basico (Performance/Best Practices/SEO).
 
 ## 4. Pos-release
 
-- [ ] Criar tag Git da versao (ex.: `v1.3.0`).
+- [ ] Conferir terminal/logcat sem excecoes de `ImageProvider` ou listeners apos navegacao.
+- [ ] Criar tag Git da versao (ex.: `v1.6.0`).
 - [ ] Arquivar artefatos de build.
 - [ ] Monitorar crashes/feedback nas primeiras 24-72h.
 - [ ] Abrir backlog de hotfix se necessario.

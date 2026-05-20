@@ -282,6 +282,16 @@ class MusicSelectionArgs {
   });
 }
 
+class MusicSelectionResult {
+  final int addedCount;
+  final List<MusicEntity> playlistMusics;
+
+  const MusicSelectionResult({
+    required this.addedCount,
+    required this.playlistMusics,
+  });
+}
+
 class GenreDetailArgs {
   final String genre;
   final List<MusicEntity> musics;

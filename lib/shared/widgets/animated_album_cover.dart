@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
+import 'package:music_music/shared/utils/artwork_provider.dart';
+
 class AnimatedAlbumCover extends StatefulWidget {
   final String? artwork;
 
@@ -35,6 +37,8 @@ class _AnimatedAlbumCoverState extends State<AnimatedAlbumCover>
 
   @override
   Widget build(BuildContext context) {
+    final artworkProvider = resolveArtworkImageProvider(widget.artwork);
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (_, __) {
@@ -49,9 +53,9 @@ class _AnimatedAlbumCoverState extends State<AnimatedAlbumCover>
               height: 180,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
-                image: widget.artwork != null
+                image: artworkProvider != null
                     ? DecorationImage(
-                        image: NetworkImage(widget.artwork!),
+                        image: artworkProvider,
                         fit: BoxFit.cover,
                       )
                     : null,
@@ -64,7 +68,7 @@ class _AnimatedAlbumCoverState extends State<AnimatedAlbumCover>
                   ),
                 ],
               ),
-              child: widget.artwork == null
+              child: artworkProvider == null
                   ? const Icon(
                       Icons.album,
                       size: 90,

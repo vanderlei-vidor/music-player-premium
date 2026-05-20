@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import 'package:music_music/app/routes.dart';
 import 'package:music_music/data/local/database_helper.dart';
 import 'package:music_music/data/models/music_entity.dart';
 import 'package:music_music/features/playlists/view_model/playlist_view_model.dart';
@@ -52,6 +53,7 @@ class _MusicSelectionScreenState extends State<MusicSelectionScreen> {
   }
 
   Future<void> _loadAllMusics() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _loadError = null;
@@ -67,6 +69,7 @@ class _MusicSelectionScreenState extends State<MusicSelectionScreen> {
         ..addAll(playlistMusics.where((m) => m.id != null).map((m) => m.id!));
 
       _selectedMusicIds.value = Set<int>.from(_existingMusicIds);
+      if (!mounted) return;
 
       setState(() {
         _allMusics = allMusics;
@@ -75,6 +78,7 @@ class _MusicSelectionScreenState extends State<MusicSelectionScreen> {
       });
     } catch (e) {
       debugPrint('Erro ao carregar musicas: $e');
+      if (!mounted) return;
       setState(() {
         _loadError = e.toString();
         _isLoading = false;
@@ -85,17 +89,44 @@ class _MusicSelectionScreenState extends State<MusicSelectionScreen> {
   Future<void> _confirmSelection() async {
     if (_isSaving) return;
     setState(() => _isSaving = true);
-    final selected = _selectedMusicIds.value;
-    final newlyAddedIds = selected.difference(_existingMusicIds);
+    try {
+      final selected = _selectedMusicIds.value;
+      final newlyAddedIds = selected.difference(_existingMusicIds);
 
-    for (final musicId in selected) {
-      if (!_existingMusicIds.contains(musicId)) {
-        await _viewModel.addMusicToPlaylistV2(widget.playlistId, musicId);
+      for (final musicId in selected) {
+        if (!_existingMusicIds.contains(musicId)) {
+          await _viewModel.addMusicToPlaylistV2(widget.playlistId, musicId);
+        }
       }
+
+      if (!mounted) return;
+      final updatedPlaylistMusics = await _viewModel.getMusicsFromPlaylistV2(
+        widget.playlistId,
+      );
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      final navigator = Navigator.of(context);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        navigator.pop(
+          MusicSelectionResult(
+            addedCount: newlyAddedIds.length,
+            playlistMusics: updatedPlaylistMusics,
+          ),
+        );
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Nao foi possivel adicionar musicas: $e'),
+          ),
+        );
+      return;
     }
-    if (!mounted) return;
-    HapticFeedback.mediumImpact();
-    Navigator.pop(context, newlyAddedIds.length);
   }
 
   void _filterMusics() {
@@ -151,24 +182,19 @@ class _MusicSelectionScreenState extends State<MusicSelectionScreen> {
                         HapticFeedback.selectionClick();
                         _confirmSelection();
                       },
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  child: _isSaving
-                      ? SizedBox(
-                          key: const ValueKey('saving'),
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.2,
-                            color: theme.colorScheme.primary,
-                          ),
-                        )
-                      : Text(
-                          addedNow > 0 ? 'Confirmar ($addedNow)' : 'Confirmar',
-                          key: const ValueKey('confirm'),
-                          style: TextStyle(color: theme.colorScheme.primary),
+                child: _isSaving
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: theme.colorScheme.primary,
                         ),
-                ),
+                      )
+                    : Text(
+                        addedNow > 0 ? 'Confirmar ($addedNow)' : 'Confirmar',
+                        style: TextStyle(color: theme.colorScheme.primary),
+                      ),
               );
             },
           ),

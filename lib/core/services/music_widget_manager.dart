@@ -27,7 +27,7 @@ class MusicWidgetManager {
   static bool _playerIsFavorite = false;
   static List<String> _playerQueue = <String>['-', '-', '-', '-'];
   static int _playerQueueCount = 0;
-  static int _playerThemeColor = 0xFFFFE0A3;
+  static int _playerThemeColor = 0xFFFFE0A3.toSigned(32);
   static int _playerQueueStartPosition = 1;
   static int _playerCurrentPosition = 1;
   static int _playerTotalTracks = 0;
@@ -75,7 +75,7 @@ class MusicWidgetManager {
     _playerIsFavorite = false;
     _playerQueue = <String>['-', '-', '-', '-'];
     _playerQueueCount = 0;
-    _playerThemeColor = 0xFFFFE0A3;
+    _playerThemeColor = 0xFFFFE0A3.toSigned(32);
     _playerQueueStartPosition = 1;
     _playerCurrentPosition = 1;
     _playerTotalTracks = 0;
@@ -108,7 +108,7 @@ class MusicWidgetManager {
       final queueAllJson = jsonEncode(queueAll);
 
       final totalQueueCount = queueCount ?? (queueTitles?.length ?? 0);
-      final effectiveThemeColor = themeColor ?? _playerThemeColor;
+      final effectiveThemeColor = (themeColor ?? _playerThemeColor).toSigned(32);
       final effectiveQueueStartPosition = queueStartPosition ?? _playerQueueStartPosition;
       final effectiveCurrentPosition = currentPosition ?? _playerCurrentPosition;
       final effectiveTotalTracks = totalTracks ?? _playerTotalTracks;

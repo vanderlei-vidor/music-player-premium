@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
+import 'package:music_music/shared/utils/artwork_provider.dart';
+
 class ArtworkCache {
   static final LinkedHashMap<String, ImageProvider> _cache = LinkedHashMap();
   static const int _maxEntries = 200;
@@ -16,7 +18,8 @@ class ArtworkCache {
       _cache[url] = existing;
       return existing;
     }
-    final created = NetworkImage(url);
+    final created = resolveArtworkImageProvider(url);
+    if (created == null) return null;
     _cache[url] = created;
     if (_cache.length > _maxEntriesOverride) {
       _cache.remove(_cache.keys.first);
