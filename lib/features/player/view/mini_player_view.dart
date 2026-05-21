@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:music_music/core/theme/app_colors.dart';
 import 'package:music_music/core/ui/neumorphic_wrapper.dart';
-import 'package:on_audio_query/on_audio_query.dart';
 import 'package:provider/provider.dart';
 
 import 'package:music_music/data/models/music_entity.dart';
@@ -171,16 +170,16 @@ class _MiniPlayerViewState extends State<MiniPlayerView>
                                     height: 50,
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
-                                      child: artworkId == null
-                                          ? _defaultArtwork(theme)
-                                          : QueryArtworkWidget(
-                                              id: artworkId,
-                                              type: ArtworkType.AUDIO,
-                                              artworkFit: BoxFit.cover,
-                                              size: 200,
-                                              nullArtworkWidget:
-                                                  _defaultArtwork(theme),
-                                            ),
+                                      child: ArtworkImage(
+                                        artworkUrl: music.artworkUrl,
+                                        audioUrl: music.audioUrl,
+                                        audioId: artworkId,
+                                        width: 50,
+                                        height: 50,
+                                        borderRadius: 12,
+                                        targetSize: 200,
+                                        fallback: _defaultArtwork(theme),
+                                      ),
                                     ),
                                   ),
                                 ),

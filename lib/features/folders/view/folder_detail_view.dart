@@ -183,6 +183,7 @@ class _FolderDetailViewState extends State<FolderDetailView> {
                             if (!isCurrent) {
                               return ArtworkThumb(
                                 artworkUrl: music.artworkUrl,
+                                audioUrl: music.audioUrl,
                                 audioId: music.sourceId ?? music.id,
                               );
                             }

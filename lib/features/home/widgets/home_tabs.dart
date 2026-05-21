@@ -1,7 +1,6 @@
 ﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:on_audio_query/on_audio_query.dart';
 import 'package:music_music/data/models/music_entity.dart';
 import 'package:music_music/data/models/search_result.dart';
 import 'package:music_music/app/routes.dart';
@@ -366,17 +365,15 @@ class _MusicCircleCard extends StatelessWidget {
                 ],
               ),
               child: ClipOval(
-                child: Builder(
-                  builder: (context) {
-                    final provider = ArtworkCache.provider(music.artworkUrl);
-                    if (provider == null) return _fallbackCircle(theme);
-                    return Image(
-                      image: provider,
-                      fit: BoxFit.cover,
-                      gaplessPlayback: true,
-                      errorBuilder: (_, __, ___) => _fallbackCircle(theme),
-                    );
-                  },
+                child: ArtworkImage(
+                  artworkUrl: music.artworkUrl,
+                  audioUrl: music.audioUrl,
+                  audioId: music.sourceId ?? music.id,
+                  width: 86,
+                  height: 86,
+                  borderRadius: 999,
+                  targetSize: 220,
+                  fallback: _defaultCircleFallback(theme),
                 ),
               ),
             ),
@@ -401,19 +398,6 @@ class _MusicCircleCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Widget _fallbackCircle(ThemeData theme) {
-    final artworkId = music.sourceId ?? music.id;
-    if (!kIsWeb && artworkId != null) {
-      return QueryArtworkWidget(
-        id: artworkId,
-        type: ArtworkType.AUDIO,
-        artworkFit: BoxFit.cover,
-        nullArtworkWidget: _defaultCircleFallback(theme),
-      );
-    }
-    return _defaultCircleFallback(theme);
   }
 
   Widget _defaultCircleFallback(ThemeData theme) {
@@ -861,33 +845,15 @@ class _SectionTracksScreenState extends State<_SectionTracksScreen> {
                         },
                         leading: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Builder(
-                            builder: (_) {
-                              final provider = ArtworkCache.provider(
-                                music.artworkUrl,
-                              );
-                              if (provider == null) {
-                                final artworkId = music.sourceId ?? music.id;
-                                if (!kIsWeb && artworkId != null) {
-                                  return QueryArtworkWidget(
-                                    id: artworkId,
-                                    type: ArtworkType.AUDIO,
-                                    artworkFit: BoxFit.cover,
-                                    nullArtworkWidget: _fallbackSquare(theme),
-                                  );
-                                }
-                                return _fallbackSquare(theme);
-                              }
-                              return Image(
-                                image: provider,
-                                width: 46,
-                                height: 46,
-                                fit: BoxFit.cover,
-                                gaplessPlayback: true,
-                                errorBuilder: (_, __, ___) =>
-                                    _fallbackSquare(theme),
-                              );
-                            },
+                          child: ArtworkImage(
+                            artworkUrl: music.artworkUrl,
+                            audioUrl: music.audioUrl,
+                            audioId: music.sourceId ?? music.id,
+                            width: 46,
+                            height: 46,
+                            borderRadius: 10,
+                            targetSize: 160,
+                            fallback: _fallbackSquare(theme),
                           ),
                         ),
                         title: Text(
@@ -980,6 +946,7 @@ class HomeFavoritesTab extends StatelessWidget {
                     ),
                     leading: ArtworkThumb(
                       artworkUrl: music.artworkUrl,
+                      audioUrl: music.audioUrl,
                       audioId: music.sourceId ?? music.id,
                     ),
                     title: Text(music.title),
@@ -1446,6 +1413,7 @@ class _HomePodcastsTabState extends State<HomePodcastsTab> {
                       return ListTile(
                         leading: ArtworkThumb(
                           artworkUrl: music.artworkUrl,
+                          audioUrl: music.audioUrl,
                           audioId: music.sourceId ?? music.id,
                         ),
                         title: Text(
@@ -1518,6 +1486,7 @@ class _HomePodcastsTabState extends State<HomePodcastsTab> {
                       return ListTile(
                         leading: ArtworkThumb(
                           artworkUrl: music.artworkUrl,
+                          audioUrl: music.audioUrl,
                           audioId: music.sourceId ?? music.id,
                         ),
                         title: Text(
@@ -1730,6 +1699,7 @@ class _HomePodcastsTabState extends State<HomePodcastsTab> {
                     child: ListTile(
                       leading: ArtworkThumb(
                         artworkUrl: m.artworkUrl,
+                        audioUrl: m.audioUrl,
                         audioId: m.sourceId ?? m.id,
                       ),
                       title: Text(

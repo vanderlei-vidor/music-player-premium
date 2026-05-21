@@ -393,6 +393,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                       child: ListTile(
                         leading: ArtworkThumb(
                           artworkUrl: music.artworkUrl,
+                          audioUrl: music.audioUrl,
                           audioId: music.sourceId ?? music.id,
                         ),
                         title: Text(music.title),

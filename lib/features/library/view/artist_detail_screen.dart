@@ -272,6 +272,7 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                                           )
                                         : ArtworkThumb(
                                             artworkUrl: music.artworkUrl,
+                                            audioUrl: music.audioUrl,
                                             audioId: music.sourceId ?? music.id,
                                           ),
                                     title: Text(

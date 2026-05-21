@@ -9,6 +9,13 @@
   - [ ] `flutter pub get`
   - [ ] `flutter analyze`
   - [ ] `flutter test`
+- [x] Rodar profiling real em `--profile` conforme `docs/performance/PROFILING_PLAN.md`:
+  - [x] Ambiente Flutter/DevTools validado (`flutter doctor -v` sem issues)
+  - [x] Home: frame chart, memory e rebuild stats
+  - [x] Player: frame chart, memory e rebuild stats
+  - [x] Queue: frame chart, memory e rebuild stats
+  - [x] Scan: CPU, memory e responsividade geral
+  - [x] Criar registro da rodada em `docs/performance/baselines/` usando `docs/performance/PERF_BASELINE_TEMPLATE.md`
 - [ ] Validar assets e branding:
   - [ ] Icone correto
   - [ ] Nome do app (`Music Music`) em telas e metadados

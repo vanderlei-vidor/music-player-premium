@@ -463,7 +463,7 @@ class PlaybackController extends ChangeNotifier {
         isFavorite: music.isFavorite,
         queueTitles: _queueController.titles(limit: 1000),
         queueCount: _queueController.queueCount,
-        themeColor: _currentDominantColor.value,
+        themeColor: _currentDominantColor.toARGB32(),
         queueStartPosition: 1,
         currentPosition: _queueController.currentPosition(),
         totalTracks: _queueController.queueCount,
@@ -872,7 +872,6 @@ class PlaybackController extends ChangeNotifier {
       case LoopMode.all:
         return AudioServiceRepeatMode.all;
       case LoopMode.off:
-      default:
         return AudioServiceRepeatMode.none;
     }
   }

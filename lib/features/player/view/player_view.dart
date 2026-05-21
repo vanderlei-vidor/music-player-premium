@@ -3,7 +3,6 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:on_audio_query/on_audio_query.dart';
 import 'package:provider/provider.dart';
 
 import 'package:music_music/app/app_info.dart';
@@ -979,6 +978,7 @@ class _QueueSheet extends StatelessWidget {
                             },
                             leading: ArtworkThumb(
                               artworkUrl: music.artworkUrl,
+                              audioUrl: music.audioUrl,
                               audioId: music.sourceId ?? music.id,
                             ),
                             title: Text(
@@ -1247,43 +1247,10 @@ class _BackgroundArtwork extends StatelessWidget {
 /// CAPA
 /// =======================================================
 
-class _ArtworkCover extends StatefulWidget {
+class _ArtworkCover extends StatelessWidget {
   final MusicEntity music;
 
   const _ArtworkCover({required this.music});
-
-  @override
-  State<_ArtworkCover> createState() => _ArtworkCoverState();
-}
-
-class _ArtworkCoverState extends State<_ArtworkCover> {
-  final OnAudioQuery _audioQuery = OnAudioQuery();
-  Future<Uint8List?>? _artworkFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadArtwork();
-  }
-
-  @override
-  void didUpdateWidget(covariant _ArtworkCover oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final oldArtworkId = oldWidget.music.sourceId ?? oldWidget.music.id;
-    final newArtworkId = widget.music.sourceId ?? widget.music.id;
-    if (oldArtworkId != newArtworkId) {
-      _loadArtwork();
-    }
-  }
-
-  void _loadArtwork() {
-    final id = widget.music.sourceId ?? widget.music.id;
-    if (id == null) {
-      _artworkFuture = Future<Uint8List?>.value(null);
-      return;
-    }
-    _artworkFuture = _audioQuery.queryArtwork(id, ArtworkType.AUDIO);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1309,41 +1276,16 @@ class _ArtworkCoverState extends State<_ArtworkCover> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(_PlayerLayout.radiusXl),
-        child: FutureBuilder<Uint8List?>(
-          future: _artworkFuture,
-          builder: (context, snapshot) {
-            Widget child;
-
-            // sem capa
-            if (!snapshot.hasData || snapshot.data == null) {
-              child = Container(
-                key: const ValueKey('no-artwork'),
-                color: Colors.grey.shade900,
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.music_note,
-                  size: 90,
-                  color: Colors.white70,
-                ),
-              );
-            } else {
-              child = Image.memory(
-                snapshot.data!,
-                key: ValueKey(widget.music.sourceId ?? widget.music.id),
-                fit: BoxFit.cover,
-              );
-            }
-
-            return AnimatedSwitcher(
-              duration: const Duration(milliseconds: 450),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (child, animation) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-              child: child,
-            );
-          },
+        child: ArtworkImage(
+          artworkUrl: music.artworkUrl,
+          audioUrl: music.audioUrl,
+          audioId: music.sourceId ?? music.id,
+          width: size,
+          height: size,
+          borderRadius: _PlayerLayout.radiusXl,
+          targetSize: size.round(),
+          animate: true,
+          fallback: const ArtworkFallback(iconSize: 90),
         ),
       ),
     );

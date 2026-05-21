@@ -10,6 +10,7 @@ class PlaylistLibraryRepository implements PlaybackQueueRepository {
 
   Future<List<MusicEntity>> getAllMusics() => _db.getAllMusicsV2();
 
+  @override
   Future<void> clearPlaybackQueue() => _db.clearPlaybackQueue();
 
   Future<void> createPlaylist(String name) => _db.createPlaylist(name);
@@ -46,8 +47,10 @@ class PlaylistLibraryRepository implements PlaybackQueueRepository {
 
   Future<int> reprocessGenresBatch() => _db.reprocessGenresBatch();
 
+  @override
   Future<Map<String, dynamic>?> loadPlaybackQueue() => _db.loadPlaybackQueue();
 
+  @override
   Future<void> savePlaybackQueue({
     required List<String> audioUrls,
     required int currentIndex,

@@ -1,6 +1,4 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:on_audio_query/on_audio_query.dart';
 import 'package:music_music/core/ui/responsive.dart';
 import 'package:music_music/shared/widgets/artwork_image.dart';
 
@@ -616,28 +614,17 @@ class _FeaturedArtwork extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     ArtworkCache.preload(context, artworkUrl);
-    final provider = ArtworkCache.provider(artworkUrl);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
-      child: SizedBox(
+      child: ArtworkImage(
+        artworkUrl: artworkUrl,
+        audioId: audioId,
         width: size,
         height: size,
-        child: provider != null
-            ? Image(
-                image: provider,
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
-                errorBuilder: (_, __, ___) => _fallback(theme),
-              )
-            : (!kIsWeb && audioId != null)
-            ? QueryArtworkWidget(
-                id: audioId!,
-                type: ArtworkType.AUDIO,
-                artworkFit: BoxFit.cover,
-                nullArtworkWidget: _fallback(theme),
-              )
-            : _fallback(theme),
+        borderRadius: 14,
+        targetSize: size.round(),
+        fallback: _fallback(theme),
       ),
     );
   }

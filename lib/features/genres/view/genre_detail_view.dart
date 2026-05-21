@@ -177,6 +177,7 @@ class _GenreDetailViewState extends State<GenreDetailView> {
                             if (!isCurrent) {
                               return ArtworkThumb(
                                 artworkUrl: music.artworkUrl,
+                                audioUrl: music.audioUrl,
                                 audioId: music.sourceId ?? music.id,
                               );
                             }

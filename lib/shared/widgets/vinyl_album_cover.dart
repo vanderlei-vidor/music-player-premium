@@ -1,9 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:on_audio_query/on_audio_query.dart';
 
 import 'package:music_music/shared/widgets/artwork_image.dart';
 import 'vinyl_needle.dart';
@@ -239,26 +237,13 @@ class _VinylAlbumCoverState extends State<VinylAlbumCover>
   }
 
   Widget _buildCenterArtwork() {
-    final provider = ArtworkCache.provider(widget.artwork);
-    if (provider != null) {
-      return Image(
-        image: provider,
-        fit: BoxFit.cover,
-        gaplessPlayback: true,
-        errorBuilder: (_, __, ___) => _defaultCenterFallback(),
-      );
-    }
-
-    if (!kIsWeb && widget.audioId != null) {
-      return QueryArtworkWidget(
-        id: widget.audioId!,
-        type: ArtworkType.AUDIO,
-        artworkFit: BoxFit.cover,
-        nullArtworkWidget: _defaultCenterFallback(),
-      );
-    }
-
-    return _defaultCenterFallback();
+    return ArtworkImage(
+      artworkUrl: widget.artwork,
+      audioId: widget.audioId,
+      targetSize: widget.size.round(),
+      borderRadius: widget.size,
+      fallback: _defaultCenterFallback(),
+    );
   }
 
   Widget _defaultCenterFallback() {

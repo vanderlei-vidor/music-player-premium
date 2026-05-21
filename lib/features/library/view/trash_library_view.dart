@@ -232,6 +232,7 @@ class _TrashLibraryViewState extends State<TrashLibraryView> {
                     return ListTile(
                       leading: ArtworkThumb(
                         artworkUrl: music.artworkUrl,
+                        audioUrl: music.audioUrl,
                         audioId: music.sourceId ?? music.id,
                       ),
                       title: Text(

@@ -41,6 +41,7 @@ class FolderCard extends StatelessWidget {
               children: [
                 ArtworkSquare(
                   artworkUrl: cover?.artworkUrl,
+                  audioUrl: cover?.audioUrl,
                   audioId: cover == null ? null : (cover.sourceId ?? cover.id),
                   borderRadius: 22,
                 ),

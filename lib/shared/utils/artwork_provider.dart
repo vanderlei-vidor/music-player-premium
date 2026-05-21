@@ -12,6 +12,10 @@ ImageProvider<Object>? resolveArtworkImageProvider(String? artworkUrl) {
   final uri = Uri.tryParse(trimmed);
   final scheme = uri?.scheme.toLowerCase();
 
+  if (_looksLikeWindowsPath(trimmed)) {
+    return local_file.createLocalFileImageProvider(trimmed);
+  }
+
   if (scheme == 'http' || scheme == 'https') {
     return NetworkImage(trimmed);
   }
@@ -29,4 +33,14 @@ ImageProvider<Object>? resolveArtworkImageProvider(String? artworkUrl) {
   }
 
   return local_file.createLocalFileImageProvider(trimmed);
+}
+
+bool _looksLikeWindowsPath(String value) {
+  if (value.length < 3) return false;
+  final drive = value.codeUnitAt(0);
+  final hasDriveLetter =
+      (drive >= 65 && drive <= 90) || (drive >= 97 && drive <= 122);
+  return hasDriveLetter &&
+      value.codeUnitAt(1) == 58 &&
+      (value[2] == r'\' || value[2] == '/');
 }

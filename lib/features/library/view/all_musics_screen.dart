@@ -200,6 +200,7 @@ class _AllMusicsScreenState extends State<AllMusicsScreen> {
                               },
                               leading: ArtworkThumb(
                                 artworkUrl: music.artworkUrl,
+                                audioUrl: music.audioUrl,
                                 audioId: music.sourceId ?? music.id,
                               ),
                               title: Text(

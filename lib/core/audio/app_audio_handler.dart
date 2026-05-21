@@ -206,7 +206,6 @@ class AppAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     await super.onTaskRemoved();
   }
 
-  @override
   Future<void> dispose() async {
     await _eventSub?.cancel();
     await _indexSub?.cancel();
