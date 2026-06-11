@@ -1,3 +1,4 @@
+import 'package:device_preview_plus/device_preview_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -62,6 +63,9 @@ class MusicApp extends StatelessWidget {
             routes: AppRoutes.baseRoutes,
             navigatorObservers:
                 navigatorObservers ?? [AppRoutes.routeObserver],
+
+            locale: DevicePreview.locale(context),
+            builder: DevicePreview.appBuilder,
           );
         },
       ),

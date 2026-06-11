@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:device_preview_plus/device_preview_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -64,7 +65,7 @@ void _setupWidgetActionChannel() {
     if (call.method == 'onWidgetAction') {
       final action = call.arguments as String;
       debugPrint('🏠 Widget action recebida: $action');
-      
+
       // Envia evento para o PlaylistViewModel via EventChannel ou Provider
       // O listener será registrado no app.dart
       _emitWidgetAction(action);
@@ -134,7 +135,13 @@ Future<void> _bootstrapApp() async {
   final preset = await ThemeManager.loadPreset();
   final maxEntries = _artworkCacheMaxEntries(preset);
   ArtworkCache.configure(maxEntries: maxEntries);
-  runApp(MusicApp(initialPreset: preset));
+  runApp(
+    DevicePreview(
+      enabled:
+          !kReleaseMode, // Ativo apenas em ambiente de desenvolvimento (debug)
+      builder: (context) => MusicApp(initialPreset: preset),
+    ),
+  );
 }
 
 int _artworkCacheMaxEntries(ThemePreset preset) {
@@ -156,4 +163,3 @@ int _artworkCacheMaxEntries(ThemePreset preset) {
       return isDark ? 200 : 160;
   }
 }
-

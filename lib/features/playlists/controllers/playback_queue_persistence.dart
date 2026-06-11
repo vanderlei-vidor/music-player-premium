@@ -15,18 +15,33 @@ class QueueRestoreResult {
 }
 
 class PlaybackQueuePersistence {
-  PlaybackQueuePersistence({required PlaybackQueueRepository repository})
-      : _repository = repository;
+  PlaybackQueuePersistence({
+    required PlaybackQueueRepository repository,
+    DateTime Function()? now,
+  })  : _repository = repository,
+        _now = now ?? DateTime.now;
+
+  static const Duration positionPersistInterval = Duration(seconds: 30);
+  static const Duration positionPersistDelta = Duration(seconds: 15);
 
   final PlaybackQueueRepository _repository;
+  final DateTime Function() _now;
   bool _isPersisting = false;
   bool _isRestoring = false;
   DateTime? _lastPersistAt;
   Duration _lastPersistedPosition = Duration.zero;
+  String? _lastPersistedQueueKey;
+  int? _lastPersistedIndex;
 
   bool get isRestoring => _isRestoring;
 
-  Future<void> clear() => _repository.clearPlaybackQueue();
+  Future<void> clear() async {
+    await _repository.clearPlaybackQueue();
+    _lastPersistAt = null;
+    _lastPersistedPosition = Duration.zero;
+    _lastPersistedQueueKey = null;
+    _lastPersistedIndex = null;
+  }
 
   Future<QueueRestoreResult?> restoreQueue(List<MusicEntity> library) async {
     if (_isRestoring) return null;
@@ -78,17 +93,21 @@ class PlaybackQueuePersistence {
     }
     if (_isPersisting) return;
 
-    final now = DateTime.now();
+    final now = _now();
+    final queueKey = _queueKey(queue);
+    final queueChanged =
+        queueKey != _lastPersistedQueueKey ||
+        currentIndex != _lastPersistedIndex;
     final sinceLastPersist =
         _lastPersistAt == null ? null : now.difference(_lastPersistAt!);
     final movedMs = (position - _lastPersistedPosition).inMilliseconds.abs();
-    final shouldThrottle =
-        !force &&
-        sinceLastPersist != null &&
-        sinceLastPersist < const Duration(seconds: 5) &&
-        movedMs < 3000;
+    final positionCheckpointDue =
+        sinceLastPersist == null ||
+        sinceLastPersist >= positionPersistInterval ||
+        movedMs >= positionPersistDelta.inMilliseconds;
+    final shouldPersist = force || queueChanged || positionCheckpointDue;
 
-    if (shouldThrottle) return;
+    if (!shouldPersist) return;
 
     _isPersisting = true;
     try {
@@ -104,8 +123,14 @@ class PlaybackQueuePersistence {
       );
       _lastPersistAt = now;
       _lastPersistedPosition = position;
+      _lastPersistedQueueKey = queueKey;
+      _lastPersistedIndex = currentIndex;
     } finally {
       _isPersisting = false;
     }
+  }
+
+  String _queueKey(List<MusicEntity> queue) {
+    return queue.map((m) => m.audioUrl).join('\u001f');
   }
 }

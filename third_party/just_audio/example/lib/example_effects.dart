@@ -7,13 +7,21 @@
 import 'dart:math';
 
 import 'package:audio_session/audio_session.dart';
+import 'package:device_preview_plus/device_preview_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_example/common.dart';
 import 'package:rxdart/rxdart.dart';
 
-void main() => runApp(const MyApp());
+void main() {
+  runApp(
+    DevicePreview(
+      enabled: !kReleaseMode, // Ativa apenas em modo Debug
+      builder: (context) => const MyApp(),
+    ),
+  );
+}
 
 class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -84,6 +92,13 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+
+      /// 🔥 AJUSTE PADRÃO DA VERSÃO PLUS PARA SINTONIZAR O COUPLING DE TELAS:
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
+
+
+
       home: Scaffold(
         body: SafeArea(
           child: Column(

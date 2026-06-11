@@ -64,13 +64,20 @@ List<MusicEntity> _library() {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  var now = DateTime(2026, 5, 21, 12);
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    now = DateTime(2026, 5, 21, 12);
   });
+
+  PlaybackQueuePersistence persistenceFor(FakeQueueRepository repo) {
+    return PlaybackQueuePersistence(repository: repo, now: () => now);
+  }
 
   test('restoreQueue returns null when no saved queue', () async {
     final repo = FakeQueueRepository();
-    final persistence = PlaybackQueuePersistence(repository: repo);
+    final persistence = persistenceFor(repo);
 
     final result = await persistence.restoreQueue(_library());
     expect(result, isNull);
@@ -83,7 +90,7 @@ void main() {
         'currentIndex': 10,
         'positionMs': 2300,
       };
-    final persistence = PlaybackQueuePersistence(repository: repo);
+    final persistence = persistenceFor(repo);
 
     final result = await persistence.restoreQueue(_library());
     expect(result, isNotNull);
@@ -95,7 +102,7 @@ void main() {
 
   test('saveQueue clears when queue is empty', () async {
     final repo = FakeQueueRepository();
-    final persistence = PlaybackQueuePersistence(repository: repo);
+    final persistence = persistenceFor(repo);
 
     await persistence.saveQueue(
       queue: const <MusicEntity>[],
@@ -110,7 +117,7 @@ void main() {
 
   test('saveQueue persists snapshot with force', () async {
     final repo = FakeQueueRepository();
-    final persistence = PlaybackQueuePersistence(repository: repo);
+    final persistence = persistenceFor(repo);
     final queue = _library();
 
     await persistence.saveQueue(
@@ -125,5 +132,77 @@ void main() {
     expect(repo.stored!['audioUrls'], ['file://a.mp3', 'file://b.mp3']);
     expect(repo.stored!['currentIndex'], 1);
     expect(repo.stored!['positionMs'], 5400);
+  });
+
+  test('saveQueue skips small position ticks inside checkpoint window', () async {
+    final repo = FakeQueueRepository();
+    final persistence = persistenceFor(repo);
+    final queue = _library();
+
+    await persistence.saveQueue(
+      queue: queue,
+      currentIndex: 0,
+      position: const Duration(seconds: 10),
+      force: true,
+    );
+
+    now = now.add(const Duration(seconds: 10));
+
+    await persistence.saveQueue(
+      queue: queue,
+      currentIndex: 0,
+      position: const Duration(seconds: 12),
+    );
+
+    expect(repo.saveCalls, 1);
+    expect(repo.stored!['positionMs'], 10000);
+  });
+
+  test('saveQueue persists position after checkpoint interval', () async {
+    final repo = FakeQueueRepository();
+    final persistence = persistenceFor(repo);
+    final queue = _library();
+
+    await persistence.saveQueue(
+      queue: queue,
+      currentIndex: 0,
+      position: const Duration(seconds: 10),
+      force: true,
+    );
+
+    now = now.add(PlaybackQueuePersistence.positionPersistInterval);
+
+    await persistence.saveQueue(
+      queue: queue,
+      currentIndex: 0,
+      position: const Duration(seconds: 20),
+    );
+
+    expect(repo.saveCalls, 2);
+    expect(repo.stored!['positionMs'], 20000);
+  });
+
+  test('saveQueue persists immediately when queue index changes', () async {
+    final repo = FakeQueueRepository();
+    final persistence = persistenceFor(repo);
+    final queue = _library();
+
+    await persistence.saveQueue(
+      queue: queue,
+      currentIndex: 0,
+      position: const Duration(seconds: 10),
+      force: true,
+    );
+
+    now = now.add(const Duration(seconds: 1));
+
+    await persistence.saveQueue(
+      queue: queue,
+      currentIndex: 1,
+      position: const Duration(seconds: 11),
+    );
+
+    expect(repo.saveCalls, 2);
+    expect(repo.stored!['currentIndex'], 1);
   });
 }

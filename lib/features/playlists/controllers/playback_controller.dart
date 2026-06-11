@@ -69,12 +69,17 @@ class PlaybackController extends ChangeNotifier {
   StreamSubscription<void>? _becomingNoisySub;
   StreamSubscription<String>? _widgetActionSub;
 
+  static const Duration _positionPersistInterval = Duration(seconds: 30);
+
   Duration _lastKnownPosition = Duration.zero;
+  Duration _lastPositionPersistRequest = Duration.zero;
   double? _volumeBeforeDuck;
   double _currentVolume = 1.0;
   bool _resumeAfterInterruption = false;
   final List<PlaybackIssue> _playbackIssues = [];
   int _crossfadeRunId = 0;
+  double? _crossfadeRestoreVolume;
+  Future<void> _navigationOperation = Future<void>.value();
 
   List<MusicEntity> get _queueMusics => _queueController.queue;
   set _queueMusics(List<MusicEntity> value) {
@@ -315,7 +320,7 @@ class PlaybackController extends ChangeNotifier {
 
     _positionSub = positionStream.listen((position) {
       _lastKnownPosition = position;
-      _persistPlaybackQueue();
+      _persistPlaybackQueuePositionCheckpoint(position);
 
       _sleepTimerController.handlePosition(position);
     });
@@ -407,6 +412,7 @@ class PlaybackController extends ChangeNotifier {
       }
 
       unawaited(_updatePlayerWidget(newMusic));
+      unawaited(_persistPlaybackQueue(force: true));
       notifyListeners();
     } finally {
       _isChangingTrack = false;
@@ -535,10 +541,11 @@ class PlaybackController extends ChangeNotifier {
     if (crossfadeSeconds <= 0) return;
 
     final runId = ++_crossfadeRunId;
-    final targetVolume = _currentVolume.clamp(0.0, 1.0);
+    final targetVolume = _currentVolume.clamp(0.0, 1.0).toDouble();
     if (targetVolume <= 0.0) {
       return;
     }
+    _crossfadeRestoreVolume = targetVolume;
 
     try {
       const steps = 20;
@@ -547,9 +554,15 @@ class PlaybackController extends ChangeNotifier {
       _currentVolume = 0.0;
 
       for (var step = 1; step <= steps; step++) {
-        if (runId != _crossfadeRunId || !_isPlaying) return;
+        if (runId != _crossfadeRunId || !_isPlaying) {
+          await _restoreCancelledCrossfadeVolume(runId, targetVolume);
+          return;
+        }
         await Future.delayed(Duration(milliseconds: stepMs));
-        if (runId != _crossfadeRunId || !_isPlaying) return;
+        if (runId != _crossfadeRunId || !_isPlaying) {
+          await _restoreCancelledCrossfadeVolume(runId, targetVolume);
+          return;
+        }
 
         final volume = (targetVolume * (step / steps)).clamp(0.0, 1.0);
         await _setHandlerVolume(volume);
@@ -558,6 +571,22 @@ class PlaybackController extends ChangeNotifier {
     } catch (_) {
       await _setHandlerVolume(targetVolume);
       _currentVolume = targetVolume;
+    } finally {
+      if (runId == _crossfadeRunId) {
+        _crossfadeRestoreVolume = null;
+      }
+    }
+  }
+
+  Future<void> _restoreCancelledCrossfadeVolume(
+    int runId,
+    double targetVolume,
+  ) async {
+    if (_currentVolume > 0.05) return;
+    await _setHandlerVolume(targetVolume);
+    _currentVolume = targetVolume;
+    if (runId == _crossfadeRunId) {
+      _crossfadeRestoreVolume = null;
     }
   }
 
@@ -582,7 +611,12 @@ class PlaybackController extends ChangeNotifier {
   }
 
   Future<void> playMusic(List<MusicEntity> queue, int index) async {
+    await _runNavigationOperation(() => _playMusicLocked(queue, index));
+  }
+
+  Future<void> _playMusicLocked(List<MusicEntity> queue, int index) async {
     if (queue.isEmpty) return;
+    _cancelCrossfadeAndRestoreVolume();
 
     final isDifferentQueue = _queueController.replaceIfDifferent(queue);
     AppLogger.info(
@@ -631,19 +665,55 @@ class PlaybackController extends ChangeNotifier {
     }
   }
 
+  Future<void> _runNavigationOperation(
+    Future<void> Function() operation,
+  ) {
+    final next = _navigationOperation.then((_) => operation());
+    _navigationOperation = next.catchError((Object e, StackTrace st) {
+      AppLogger.warn(
+        'PlaybackController',
+        'Falha em operacao serializada de navegacao',
+        error: e,
+        stackTrace: st,
+      );
+    });
+    return next;
+  }
+
+  void _cancelCrossfadeAndRestoreVolume() {
+    _crossfadeRunId++;
+    if (_currentVolume > 0.05) return;
+    _currentVolume = _crossfadeRestoreVolume ?? 1.0;
+    _crossfadeRestoreVolume = null;
+    unawaited(_setHandlerVolume(_currentVolume));
+  }
+
   Future<void> nextMusic() async {
-    await _handler.skipToNext();
-    _persistPlaybackQueue();
+    await _runNavigationOperation(() async {
+      _cancelCrossfadeAndRestoreVolume();
+      await _handler.skipToNext();
+      if (_isPlaying) {
+        await _handler.play();
+      }
+      _persistPlaybackQueue(force: true);
+    });
   }
 
   Future<void> previousMusic() async {
-    await _handler.skipToPrevious();
-    _persistPlaybackQueue();
+    await _runNavigationOperation(() async {
+      _cancelCrossfadeAndRestoreVolume();
+      await _handler.skipToPrevious();
+      if (_isPlaying) {
+        await _handler.play();
+      }
+      _persistPlaybackQueue(force: true);
+    });
   }
 
   Future<void> seek(Duration position) async {
     await _handler.seek(position);
-    _persistPlaybackQueue();
+    _lastKnownPosition = position;
+    _persistPlaybackQueue(force: true);
   }
 
   Future<void> toggleShuffle() async {
@@ -678,6 +748,7 @@ class PlaybackController extends ChangeNotifier {
       'toggleShuffle complete | current=$_isShuffled | queue=${_queueMusics.length} | '
       'current=${_currentMusic?.title ?? '-'}',
     );
+    _persistPlaybackQueue(force: true);
     notifyListeners();
   }
 
@@ -703,6 +774,7 @@ class PlaybackController extends ChangeNotifier {
         ),
       );
     }
+    _persistPlaybackQueue(force: true);
     notifyListeners();
   }
 
@@ -929,6 +1001,15 @@ class PlaybackController extends ChangeNotifier {
       position: _lastKnownPosition,
       force: force,
     );
+  }
+
+  void _persistPlaybackQueuePositionCheckpoint(Duration position) {
+    final movedMs =
+        (position - _lastPositionPersistRequest).inMilliseconds.abs();
+    if (movedMs < _positionPersistInterval.inMilliseconds) return;
+
+    _lastPositionPersistRequest = position;
+    unawaited(_persistPlaybackQueue());
   }
 
   Future<void> _persistPlaybackQueueOnDispose() async {

@@ -65,6 +65,7 @@ dependencies:
   web: ^1.1.0
   palette_generator: ^0.3.3+3
   
+  device_preview_plus: ^2.4.7
   
 
   
