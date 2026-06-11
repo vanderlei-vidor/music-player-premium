@@ -85,3 +85,12 @@ Add screenshots of:
 
 Active Development
 
+## Engineering Highlights
+
+- Local-first architecture
+- Cross-platform design
+- Audio lifecycle management
+- Performance optimization strategies
+- Accessibility-first development
+- Scalable Flutter architecture
+
