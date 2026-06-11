@@ -1,56 +1,87 @@
-# Music Music
+# Music Player Premium
 
-Aplicativo Flutter para reprodução de música local com foco em UX premium, organização da biblioteca e performance.
+A high-performance local-first music player built with Flutter, designed to deliver a premium audio experience across mobile, tablet, and desktop platforms.
 
-## Destaques
+The project focuses on performance optimization, audio processing, accessibility, responsive design, and scalable software architecture while maintaining a modern and intuitive user experience.
 
-- Player completo com controles de fila, shuffle, repeat e sleep timer.
-- Biblioteca por músicas, álbuns, artistas, gêneros e pastas.
-- Playlists locais com adição/remoção de faixas.
-- Favoritas, recentes e mais tocadas.
-- Tela de boas-vindas personalizada com nome do usuário.
-- Suporte multiplataforma: Android, iOS, Web, Windows, macOS e Linux.
+## Overview
 
-## Stack
+Music Player Premium was developed as a production-oriented application demonstrating advanced Flutter development techniques, audio lifecycle management, responsive layouts, and performance engineering.
 
-- Flutter + Provider (gerenciamento de estado)
-- just_audio + just_audio_background + audio_session (áudio)
-- sqflite / sqflite_common_ffi / sqflite_common_ffi_web (persistência)
-- on_audio_query (metadados e artwork local)
-- shared_preferences (preferências do usuário)
+The application gives users complete control over their personal music library while ensuring smooth playback, efficient resource usage, and platform-native behavior.
 
-## Arquitetura
+## Key Features
 
-Estrutura baseada em features:
+### Audio Experience
 
-- `lib/features/` telas e viewmodels por domínio (home, player, playlists, library etc.)
-- `lib/data/` modelos e acesso a banco local
-- `lib/core/` tema, utilitários, plataforma e serviços compartilhados
-- `lib/shared/` widgets reutilizáveis
+* Background audio playback
+* Native media controls
+* Gapless playback
+* Crossfade transitions
+* Audio session management
 
-## Como executar
+### Performance
 
-```bash
-flutter pub get
-flutter run
-```
+* Optimized rendering
+* Artwork caching system
+* Efficient rebuild strategies
+* Low memory footprint
 
-## Qualidade
+### Cross-Platform Support
 
-```bash
-flutter analyze
-flutter test
-```
+* Mobile
+* Tablet
+* Desktop
 
-## Build de release (exemplos)
+### Accessibility
 
-```bash
-flutter build apk --release
-flutter build appbundle --release
-flutter build web --release
-```
+* Screen reader support
+* Large text support
+* Keyboard navigation
+* Accessible interactions
 
-## Gestão de release
+### Data Persistence
 
-- Changelog: `CHANGELOG.md`
-- Checklist de publicação: `RELEASE_CHECKLIST.md`
+* SQLite integration
+* Playlist persistence
+* Queue restoration
+* User preferences
+
+## Tech Stack
+
+### Frontend
+
+* Flutter
+* Dart
+
+### Audio
+
+* just_audio
+* audio_service
+
+### Database
+
+* SQLite
+
+### State Management
+
+* Provider / Riverpod
+
+### Monitoring
+
+* Sentry
+* Crashlytics
+
+## Screenshots
+
+Add screenshots of:
+
+* Library Screen
+* Now Playing Screen
+* Queue Management
+* Tablet/Desktop Layout
+
+## Status
+
+Active Development
+
